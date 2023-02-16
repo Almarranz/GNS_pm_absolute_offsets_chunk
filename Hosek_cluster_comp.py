@@ -72,8 +72,8 @@ align_degree =2#TODO
 vel_cut = pm_ok#TODO this is for the vel uncertainty in gns
 max_sig = 0.1#TODO
 max_sep = 0.1*u.arcsec#TODO
-cluster_gone = 'no'
-
+cluster_gone = 'yes'
+radio = 15#TODO radio around the cluster to delete (in arcsec)
 
 center_arc = SkyCoord(ra = '17h45m50.65020s', dec = '-28d49m19.51468s', equinox = 'J2000') if choosen_cluster =='Arches' else SkyCoord('17h46m14.68579s', '-28d49m38.99169s', equinox = 'J2000')#Quintuplet
 #Name 0	F127M 1	e_F127M 2	F139M 3	e_F139M 4	F153M 5	e_F153M 6	dRA 7	e_dRA 8	dDE 9	e_dDE 10	pmRA 11	e_pmRA 12	pmDE 13	e_pmDE 14	t0 15	Nobs 16	chi2RA 17	chi2DE 18	Pclust 19	
@@ -124,7 +124,7 @@ hos_coord = SkyCoord(ra = arches['RA'], dec = arches['DEC'], unit = 'degree', eq
 
 if cluster_gone == 'yes':
     center_clus = SkyCoord(ra  = [center_arc.ra.value], dec = [center_arc.dec.value], unit ='degree')
-    idxc, group_md, d2d,d3d =  ap_coor.search_around_sky(center_clus, hos_coord, 25*u.arcsec)
+    idxc, group_md, d2d,d3d =  ap_coor.search_around_sky(center_clus, hos_coord, radio*u.arcsec)
     arches = arches.drop(arches.index[group_md],axis = 0)
     hos_coord = SkyCoord(ra = arches['RA'], dec = arches['DEC'], unit = 'degree', equinox = 'J2000')
 
@@ -230,8 +230,10 @@ pmdec_fit = np.polyfit(hos_match['pmDE'], gns_match[:,1],1)
 # %%
 # marking strange vertical feature in the pm vs pm plots
 # feature = np.where((hos_match['pmDE']>-2)&(hos_match['pmDE']<-1.7))
-feature_A = -0.1
-feature_B = -0.11
+# feature_A = -1
+# feature_B = -1.001
+feature_A = -1
+feature_B = -0.7
 feature = np.where((hos_match['pmRA']>feature_A)&(hos_match['pmRA']<feature_B))
 fig, ax = plt.subplots(1,2,figsize = (20,10))
 ax[0].scatter(hos_match['pmRA'], gns_match[:,0])
@@ -255,15 +257,41 @@ ax[1].scatter(hos_match['pmDE'][list(feature[0])],gns_match[:,1][feature],color 
 ax[0].set_xticks(np.arange(-10,5))
 ax[0].grid()
 # %%
+fig, ax = plt.subplots(1,2,figsize=(20,10))
+ax[0].scatter(gns_match[:,-2][feature],gns_match[:,-1][feature],color = 'r', marker = 'x',s =100)
 gns_match = np.delete(gns_match, feature, axis =0)
 hos_match = hos_match.drop(hos_match.index[feature],axis = 0)
+
+d_pmra_match =  hos_match['pmRA']  - gns_match[:,0]
+d_pmdec_match = hos_match['pmDE'] - gns_match[:,1]
+
+
+ax[0].scatter(arches['RA'], arches['DEC'],s = 20, c='k',alpha=0.01 )
+ax[0].scatter(gns[:,-2],gns[:,-1],s=20, alpha=0.01)
+ax[0].scatter(hos_match['RA'],hos_match['DEC'],s=100)
+ax[0].scatter(gns_match[:,-2],gns_match[:,-1],s=20)
+
+
+ax[0].xaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
+# %
+
+
+
+ax[1].set_title('%s'%(choosen_cluster))
+ax[1].hist(d_pmra_match, histtype = 'step',linewidth = 10,label = '$\overline{\Delta\mu_{ra}}$ = %.1f $\pm$ %.1f'%(np.mean(d_pmra_match),np.std(d_pmra_match)))
+ax[1].hist(d_pmdec_match,histtype = 'step',linewidth = 10,label = '$\overline{\Delta\mu_{dec}}$ = %.1f $\pm$ %.1f'%(np.mean(d_pmdec_match),np.std(d_pmdec_match)))
+ax[1].legend(loc=2)
+ax[1].set_xlabel('$\Delta\mu$ (mas/yr)')
+ax[1].set_xlim(-6,6)
+
+sys.exit('285')
 # %%
 # =============================================================================
 # This part deletes the points that fall at certain distance from the fitiing 
 # line
 # =============================================================================
 bad = []
-sig_dis = 1.5
+sig_dis = 3
 # dist_line = abs(((-1)*pmdec_fit[0]*hos_match[:,13] + gns_match[:,1]
 #         + (-1)*(pmdec_fit[1]))/np.sqrt(1**2 + pmdec_fit[0]**2))
 
